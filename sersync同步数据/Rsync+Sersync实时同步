@@ -1,0 +1,208 @@
+Rsync+Sersync实时同步
+
+
+1、客户端安装rsync （192.168.56.13）
+ cd  /usr/local/src/
+ wget https://download.samba.org/pub/rsync/rsync-3.1.2.tar.gz（软件地址过期）
+ tar zxvf rsync-3.1.2.tar.gz
+ mkdir -pv /usr/local/rsync
+ cd  rsync-3.1.2
+ ./configure --prefix=/usr/local/rsync
+ make && make install
+
+配置环境变量
+vim  /etc/profile.d/rsync.sh
+
+#!/bin/sh
+export PATH=$PATH:/usr/local/srync/bin
+
+建立软连接
+ln -s  /usr/local/rsync/bin/rsync /usr/bin/rsync
+
+查看当前版本
+rsync --version
+
+二、Rsync server配置（192.168.56.13）
+
+vim /etc/rsyncd.conf 
+
+uid = rsync
+gid = rsync
+port = 873
+use chroot = on
+max connections = 200
+timeout = 120
+pid file = /var/run/rsyncd.pid
+lock file = /var/run/rsyncd.lock
+log file = /var/log/rsyncd.log
+[bakup]
+path = /data/bakup
+read only = false
+list = false
+hosts allow = 192.168.0.0/24
+hosts deny = 0.0.0.0/32
+auth users = root
+secrets file = /etc/rsyncd.password
+
+
+创建密码文件
+vim /etc/rsyncd.password 
+root:123
+或者
+echo "root:123" > /etc/rsyncd.password
+
+
+创建Rsync server服务启动的系统账户  
+ useradd rsync -M  -s  /bin/nologin
+
+创建数据存放目录
+mkdir -p  /data/bakup
+
+修改目录权限
+chown rsync.rsync /data/bakup
+
+chmod 600 /etc/rsyncd.password
+chmod 600 /etc/rsyncd.conf
+
+启动服务
+rsync --daemon
+
+查看服务是否启动
+ps  axu |grep rsync
+lsof -i tcp:873
+
+三、客户端设置（192.168.56.14）
+创建密码文件
+vim  /etc/rsyncd.password
+ 123
+修改文件权限
+chmod 600 /etc/rsyncd.password
+
+安装客户端
+yum  -y install rsync
+
+四、测试
+客户端上推送数据（192.168.56.14操作）
+rsync -avzP test.txt  rsync@192.168.56.13::bakup --password-file=/etc/rsyncd.password
+
+
+服务端查看文件是否推送成功（192.168.56.13）
+ll
+
+从服务端拉取数据（192.168.56.14操作）
+rsync -avzP rsync_bakup@192.168.56.13::bakup  /tmp --password-file=/etc/rsyncd.password
+
+
+
+五、安装配置sersync （192.168.56.14操作）
+cd  /usr/local/src/
+tar zxvf sersync2.5.4_64bit_binary_stable_final.tar.gz
+
+创建文件目录
+ mkdir -pv /usr/local/sersync/{conf,logs,bin}
+
+移动文件
+ mv  GNU-Linux-x86/sersync2 /usr/local/sersync/bin/
+ mv  GNU-Linux-x86/confxml.xml /usr/local/sersync/conf
+
+ 配置环境变量
+ vim  /etc/profile.d/sersync.sh
+ #!/bin/bash
+ export PATH=$PATH:/usr/local/sersync/bin
+
+文件生效
+source /etc/profile.d/sersync.sh
+
+
+修改sersync配置文件
+cd  /usr/local/sersync/conf
+cp confxml.xml confxml.xml.bak
+vim  confxml.xml
+
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<head version="2.5">
+    <host hostip="localhost" port="8008"></host>
+    <debug start="false"/>
+    <fileSystem xfs="false"/>
+    <filter start="false">
+        <exclude expression="(.*)\.svn"></exclude>
+        <exclude expression="(.*)\.gz"></exclude>
+        <exclude expression="^info/*"></exclude>
+        <exclude expression="^static/*"></exclude>
+    </filter>
+    <inotify>
+        <delete start="true"/>
+        <createFolder start="true"/>
+        <createFile start="false"/>
+        <closeWrite start="true"/>
+        <moveFrom start="true"/>
+        <moveTo start="true"/>
+        <attrib start="false"/>
+        <modify start="false"/>
+    </inotify>
+
+    <sersync>
+        <localpath watch="/opt/tongbu"> #指定要监控的本地目录
+            <remote ip="192.168.56.13" name="bakup"/> #指定要同步的目标服务器的IP地址，及目标服务器rsync的[模块]
+            <!--<remote ip="192.168.8.39" name="tongbu"/>-->
+            <!--<remote ip="192.168.8.40" name="tongbu"/>-->
+        </localpath>
+        <rsync>
+            <commonParams params="-artuz"/>
+            <auth start="true" users="root" passwordfile="/etc/rsyncd.password"/>
+            <userDefinedPort start="false" port="874"/><!-- port=874 -->
+            <timeout start="false" time="100"/><!-- timeout=100 -->
+            <ssh start="false"/>
+        </rsync>
+        <failLog path="/tmp/rsync_fail_log.sh" timeToExecute="60"/><!--default every 60mins execute once-->
+        <crontab start="false" schedule="600"><!--600mins-->
+            <crontabfilter start="false">
+                <exclude expression="*.php"></exclude>
+                <exclude expression="info/*"></exclude>
+            </crontabfilter>
+        </crontab>
+        <plugin start="false" name="command"/>
+    </sersync>
+
+    <plugin name="command">
+        <param prefix="/bin/sh" suffix="" ignoreError="true"/>  <!--prefix /opt/tongbu/mmm.sh suffix-->
+        <filter start="false">
+            <include expression="(.*)\.php"/>
+            <include expression="(.*)\.sh"/>
+        </filter>
+    </plugin>
+
+    <plugin name="socket">
+        <localpath watch="/opt/tongbu">
+            <deshost ip="192.168.138.20" port="8009"/>
+        </localpath>
+    </plugin>
+    <plugin name="refreshCDN">
+        <localpath watch="/data0/htdocs/cms.xoyo.com/site/">
+            <cdninfo domainname="ccms.chinacache.com" port="80" username="xxxx" passwd="xxxx"/>
+            <sendurl base="http://pic.xoyo.com/cms"/>
+            <regexurl regex="false" match="cms.xoyo.com/site([/a-zA-Z0-9]*).xoyo.com/images"/>
+        </localpath>
+    </plugin>
+</head>
+
+
+启动
+sersync2 -d  -o /usr/local/sersync/conf/confxml.xml
+
+测试(192.168.56.14)
+ cd  /data/bakup/
+ for f in `seq 10`;do touch $f;done
+
+检查数据是否同步Rsync server(192.168.56.13)
+ll  /data/bakup/
+
+
+
+
+
+
+
+
+
+
