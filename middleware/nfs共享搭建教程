@@ -1,0 +1,84 @@
+
+centos7 nfs服务搭建与配置
+
+
+NFS服务端安装配置
+
+yum install nfs-utils rpcbind -y   //安装后默认会启动RPC的111端口
+vim /etc/exports  //写上如下一行
+/home/nfstestdir 192.168.221.10/24(rw,sync,all_squash,anonuid=1000,anongid=1000)  #ip地址为客户端地址
+mkdir /home/nfstestdir
+chmod 777 /home/nfstestdir
+systemctl start rpcbind
+systemctl start nfs
+systemctl enable rpcbind
+systemctl enable nfs
+
+
+NFS配置选项
+
+cat /etc/exports
+/home/nfstestdir 192.168.221.10/24(rw,sync,all_squash,anonuid=1000,anongid=1000)
+共享目录======共享给谁访问====限制的权限列表
+限制的权限列表
+rw //读写
+ro //只读
+sync //同步模式，内存数据实时写入磁盘
+async //非同步模式
+no_root_squash //客户端挂载NFS共享目录后，root用户不受约束，权限很大
+root_squash //root用户也要受到限制，被限定成某个普通用户
+all_squash //客户端上所有用户在使用NFS共享目录时都被限定为一个普通用户
+anonuid/anongid //定义被限定的uid和gid
+
+
+
+客户端挂载
+
+yum install nfs-utils.x86_64 -y
+showmount -e 192.168.221.20 //显示如下内容,关闭服务端的防火墙和selinux,可以看到共享  ip地址为服务端ip地址
+clnt_create: RPC: Port mapper failure - Unable to receive: errno 113 (No route to host)
+mkdir /nfs
+mount -t nfs 192.168.221.20:/home/nfstestdir /nfs         //挂载
+df -h|grep nfs //可看到如下内容
+192.168.221.20:/home/nfstestdir   18G 1017M   17G    6% /nfs 
+echo "nfs" > /nfs/nfs.txt
+ll /nfs/nfs.txt  //显示如下
+-rw-r--r--. 1 1000 1000 4 3月   4 18:50 /nfs/nfs.txt  //正是服务端定义的anonuid=1000,anongid=1000
+exportfs命令
+客户端正在用服务端共享的目录时，如果服务端重启nfs服务，此时客户端就不能访问共享目录了。
+为了解决以上问题，就会用到exportfs命令
+
+rpm -qf `which exportfs` //下面一行是查看到的内容
+nfs-utils-1.3.0-0.48.el7.x86_64
+在服务端作如下配置
+
+echo "/tmp 192.168.221.10(rw,sync,no_root_squash)" >> /etc/exports
+exportfs -arv
+在客户端上查看,挂载
+
+showmount -e 192.168.221.20  //以下三行是查看到的内容
+Export list for 192.168.221.20:
+/home/nfstestdir 192.168.221.10/24
+/tmp             192.168.221.10
+mount -t nfs 192.168.221.20:/tmp/ /nfs2  
+df -h |grep nfs  //以下是查到的内容
+192.168.221.20:/home/nfstestdir   18G 1017M   17G    6% /nfs
+192.168.221.20:/tmp               18G 1017M   17G    6% /nfs2
+exportfs命令选项
+
+-a //全部挂载或者全部卸载
+-r //重新挂载
+-u //卸载某一个目录
+-v //显示共享目录
+NFS客户端问题
+
+NFS 4版本会有问题
+客户端挂载共享目录后，不管是root用户还是普通用户，创建新文件时属主、属组为nobody
+客户端挂载时加上 -o nfsvers=3
+客户端和服务端都需要
+vim /etc/idmapd.conf
+把 "#Domain = local.domain.edu"改为 "Domain = xxx.com"(这里的xxx.com随意定义)，然后重启rpcidmapd服务
+
+
+
+

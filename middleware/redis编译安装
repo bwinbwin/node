@@ -1,0 +1,46 @@
+
+redis编译安装
+环境：redis4.0.6
+主机系统：centos6.8
+
+
+
+wget http://download.redis.io/releases/redis-4.0.6.tar.gz
+
+redis编译安装
+cd  redis-4.0.6
+make PREFIX=/opt/redis MALLOC=libc CFLAGS="-march=x86-64" install
+
+会出现一下错误
+cc: ../deps/hiredis/libhiredis.a: No such file or directory
+cc: ../deps/lua/src/liblua.a: No such file or directory
+cc: ../deps/geohash-int/geohash.o: No such file or directory
+cc: ../deps/geohash-int/geohash_helper.o: No such file or directory
+make[1]: * [redis-server] Error 1
+make[1]: Leaving directory `/usr/local/src/redis-3.2.9/src'
+make: * [all] Error 2
+
+进入到deps目录下查看有那些文件
+ll
+
+在deps目录中执行
+
+make geohash-int hiredis jemalloc linenoise lua
+
+根据提示如果没有geohash-int 删除掉重新编译完成后重新执行
+
+make PREFIX=/opt/redis MALLOC=libc CFLAGS="-march=x86-64" install
+
+当看到下面的文字，恭喜您。编译完成。 
+Hint: It’s a good idea to run ‘make test’ ;)
+
+cpoy redis.conf文件到指定目录并修改参数
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,89 @@
+redis哨兵集群搭建
+环境：centos7.x redis4.0.6
+IP1:192.168.56.20
+IP2:192.168.56.21
+
+wget http://download.redis.io/releases/redis-4.0.6.tar.gz
+
+tar xf redis-4.0.6.tar.gz
+
+redis编译安装
+cd  redis-4.0.6
+make PREFIX=/opt/redis MALLOC=libc CFLAGS="-march=x86-64" install
+当看到下面的文字，恭喜您。编译完成。 
+Hint: It’s a good idea to run ‘make test’ ;)
+
+从redis下复制redis.conf和sentinel.conf到/opt/redis
+
+主要修改主服务器(192.168.56.20)redis.conf文件以下参数
+
+
+bind 0.0.0.0
+daemonize yes
+port 6379
+pidfile /opt/redis/run/redis_6379.pid
+logfile "/opt/redis/logs/redis.log"
+dbfilename dump.rdb
+dir "/opt/redis/data/"
+masterauth qaz123    
+requirepass qaz123
+
+
+复制redis文件夹（192.168.56.20）到从服务器（192.168.56.21）
+scp -r redis  192.168.56.21:/opt
+修改redis.conf文件，添加
+slaveof 192.168.56.20 6379
+
+
+
+启动redis
+/redis-server /opt/redis/conf/redis.conf  &
+
+/redis-cli -h 192.168.56.21 -p 6379 
+>info   查看集群是否正常
+
+
+哨兵模式的配置
+
+mkdir -pv redis_sentinel/{logs,conf}
+
+修改sentinel.conf文件下以下参数：
+
+
+protected-mode no
+port 26379
+dir "/opt/redis/redis_sentinel"
+logfile "/opt/redis/redis_sentinel/logs/redis26379.log"
+daemonize yes
+sentinel monitor master-6379 192.168.56.20 6379 1
+sentinel down-after-milliseconds master-6379 15000
+sentinel failover-timeout master-6379 18000
+sentinel auth-pass master-6379 qaz123
+sentinel parallel-syncs master-6379 1
+
+
+
+复制redis-sentinel到从服务器（56.21）
+
+启动sentinel服务
+/redis-sentinel /opt/redis/redis_sentinel/conf/sentinel.conf  &
+
+查看
+/redis-cli -h ip -p 26379
+>info
+结果显示
+master0:name=master-6379,status=ok,address=192.168.56.20:6379,slaves=1,sentinels=2
+
+
+
+
+添加环境变量
+export REDIS_HOME=/opt/redis/
+export PATH=$REDIS_HOME/bin:$PATH
+
+
+
+
+
+
+

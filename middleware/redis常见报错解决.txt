@@ -1,0 +1,42 @@
+1)The TCP backlog setting of 511 cannot be enforced because /proc/sys/net/core/somaxconn is set to the lower value of 128
+
+2）WARNING overcommit_memory is set to 0! Background save may fail under low memory condition. To fix this issue add ‘vm.overcommit_memory = 1‘ to /etc/sysctl.conf and then reboot or run the command ‘sysctl vm.overcommit_memory=1‘ for this to take effect.
+
+解决：
+
+针对这两个问题，都要修改/etc/sysctl.conf文件，在文件末尾加入以下两句：
+
+net.core.somaxconn= 1024
+vm.overcommit_memory = 1
+
+3）WARNING you have Transparent Huge Pages (THP) support enabled in your kernel. This will create latency and memory usage issues with Redis. To fix this issue run the command ‘echo never > /sys/kernel/mm/transparent_hugepage/enabled‘ as root, and add it to your /etc/rc.local in order to retain the setting after a reboot. Redis must be restarted after THP is disabled.
+
+解决：其实警告信息已经说的很明白了。
+
+临时解决：root用户执行echo never > /sys/kernel/mm/transparent_hugepage/enabled
+
+永久解决：将上面这句话写入到/etc/rc.local文件中。
+
+修改完成后要重启redis。
+
+第二个警告：overcommit_memory is set to 0! Background save may fail under low memory condition. To fix this issue add 'vm.overcommit_memory = 1' to/etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+
+意思是：overcommit_memory参数设置为0！在内存不足的情况下，后台程序save可能失败。建议在文件 /etc/sysctl.conf 中将overcommit_memory修改为1。
+
+临时解决方法：echo "vm.overcommit_memory=1" > /etc/sysctl.conf
+
+永久解决方法：将其写入/etc/sysctl.conf文件中。
+
+参考：有关linux下redis overcommit_memory的问题
+
+第三个警告：you have Transparent Huge Pages (THP) support enabled in your kernel. This will create latency and memory usage issues with Redis. To fix thisissue run the command 'echo never > /sys/kernel/mm/transparent_hugepage/enabled' as root, and add it to your /etc/rc.local in order to retain thesetting after a reboot. Redis must be restarted after THP is disabled.
+
+意思是：你使用的是透明大页，可能导致redis延迟和内存使用问题。执行 echo never > /sys/kernel/mm/transparent_hugepage/enabled 修复该问题。
+
+临时解决方法：
+
+echo never > /sys/kernel/mm/transparent_hugepage/enabled。
+
+永久解决方法：
+
+将其写入/etc/rc.local文件中
