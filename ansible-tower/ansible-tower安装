@@ -1,0 +1,176 @@
+安装准备
+
+开始安装
+
+    cd /opt/
+    wget http://releases.ansible.com/ansible-tower/setup-bundle/ansible-tower-setup-bundle-3.2.3-1.el7.tar.gz
+    tar zxf ansible-tower-setup-bundle-3.2.3-1.el7.tar.gz
+    cd ansible-tower-setup-bundle-3.2.3-1.el7
+
+复制以下内容覆盖 /opt/ansible-tower-setup-bundle-3.2.3-1.el7/inventory 文件 (安装配置的清单文件)
+
+
+[tower]
+localhost ansible_connection=local
+
+[database]
+
+[all:vars]
+admin_password='admin'
+
+pg_host=''
+pg_port=''
+
+pg_database='awx'
+pg_username='awx'
+pg_password='admin'
+
+rabbitmq_port=5672
+rabbitmq_vhost=tower
+rabbitmq_username=tower
+rabbitmq_password='admin'
+rabbitmq_cookie=cookiemonster
+
+# Needs to be true for fqdns and ip addresses
+rabbitmq_use_long_name=false
+
+# Isolated Tower nodes automatically generate an RSA key for authentication;
+# To disable this behavior, set this value to false
+# isolated_key_generation=true
+
+
+
+安装依赖环境(通过安装包中提供的相关依赖直接安装，因为需要单独处理一些依赖)
+
+    yum -y install `cat /opt/ansible-tower-setup-bundle-3.2.3-1.el7/bundle/base_packages.txt`
+    yum -y install /opt/ansible-tower-setup-bundle-3.2.3-1.el7/bundle/repos/epel/*
+
+
+开始安装
+
+    /opt/ansible-tower-setup-bundle-3.2.3-1.el7/setup.sh
+
+安装完成后打开一下连接可以访问web界面(用户名admin,密码安装清单中配置，示例中密码为admin)
+
+
+http://ip
+
+
+导入证书或者申请一个免费
+
+license_4ecef0cbe6d542e48d938b8827df5590.txt
+
+破解限制10台机器限制
+
+方法一
+cd /var/lib/awx/venv/awx/lib/python2.7/site-packages/tower_license
+
+
+vi __init__.py
+
+注释230行，新增两行
+available_instances = 1000000 
+attrs['license_type'] = 'enterprise'
+
+
+以下摘取license验证部分代码
+
+def validate(self):
+    # Return license attributes with additional validation info.
+    attrs = copy.deepcopy(self._attrs)
+    key = attrs.get('license_key', 'UNLICENSED')
+    if not self._check_cloudforms_subscription() and (key == 'UNLICENSED' or key != self._generate_key()):
+        attrs.update(dict(valid_key=False, compliant=False))
+        return attrs
+    attrs['valid_key'] = True
+    attrs['deployment_id'] = hashlib.sha1(key).hexdigest()
+
+    if Host:
+        current_instances = Host.objects.active_count()
+    else:   
+        current_instances = 0
+    #available_instances = int(attrs.get('instance_count', None) or 0)
+    available_instances = 1000000 
+    attrs['license_type'] = 'enterprise'
+    attrs['current_instances'] = current_instances
+    attrs['available_instances'] = available_instances
+    attrs['free_instances'] = available_instances - current_instances
+
+
+
+方法二
+
+修改license验证
+
+cd /var/lib/awx/venv/awx/lib/python2.7/site-packages/tower_license
+vi __init__.py
+
+新增120行， return True
+119     def _check_cloudforms_subscription(self):
+120         return True
+
+
+
+以下摘取license验证部分代码
+
+    def __init__(self, **kwargs):
+        self._attrs = dict(
+            company_name='',
+            instance_count=0,
+            license_date=0,
+            license_key='UNLICENSED',
+        )
+        if not kwargs:
+            kwargs = getattr(settings, 'LICENSE', None) or {}
+        self._attrs.update(kwargs)
+        self._attrs['license_date'] = int(self._attrs['license_date'])
+        if not self._attrs.get('subscription_name', None):
+            self._attrs['subscription_name'] = self._generate_subscription_name()
+        if self._check_cloudforms_subscription():
+            self._generate_cloudforms_subscription()
+
+    def _generate_cloudforms_subscription(self):
+        self._attrs.update(dict(company_name="Red Hat CloudForms License",
+                                instance_count=9999999,
+                                license_date=253370764800,
+                                license_key='CodyGuo',
+                                license_type='enterprise',
+                                subscription_name='Red Hat CloudForms License'))
+
+
+    def _check_cloudforms_subscription(self):
+        return True
+        if os.path.exists('/var/lib/awx/i18n.db'):
+            return True
+        if os.path.isdir("/opt/rh/cfme-appliance") and os.path.isdir("/opt/rh/cfme-gemset"):
+            try:
+                has_rpms = subprocess.call(["rpm", "--quiet", "-q", "cfme", "cfme-appliance", "cfme-gemset"])
+                if has_rpms == 0:
+                    return True
+            except OSError:
+                pass
+        return False
+
+
+
+编译
+
+python -m py_compile __init__.py
+python -O -m py_compile __init__.py
+
+
+重启服务
+
+ansible-tower-service restart
+
+
+验证
+
+打开–settings–VIEW YOUR LICENSE 查看
+
+https://ip/#/license
+
+
+
+
+
