@@ -24,9 +24,9 @@ class WeChat(object):
 
                 self.__url = url.rstrip('/')
 
-                self.__corpid = 'wwbaa0a4ebca6b8cb3'
+                self.__corpid = 'ssswbaa0ebca6b8cb3'
 
-                self.__secret = 'iXUdC8bDrmEDrqzC9h3TXoekT0-l02Zn0FVrgxuo2d8'
+                self.__secret = 'iXUdZn0FVrgxuo2d8'
 
  
 
