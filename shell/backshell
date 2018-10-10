@@ -1,1 +1,24 @@
-# node
+备份脚本
+
+
+#/bin/bash
+# 项目名称
+#操作主机IP
+serverhost="10.167.10.81 10.167.10.82"
+#时间变量
+data=$(date "+%Y%m%d-%H%M%S")
+#源程序文件路径
+s_path=/apps/nginx/html
+#备份路径
+b_path=/data/backup
+#程序包名
+packagename=wz
+
+for i in $serverhost
+do
+echo $packagename 正在打包备份 ----------------------------
+ssh -p 11235 root@$i "cd ${s_path} ; tar -zcf ${b_path}/$packagename.$data.tar.gz $packagename"
+echo $packagename 备份完成 ----------------------------
+NAME=`ssh -p 11235  root@$i  ""/bin/ls -l  -rt $b_path |grep $packagename | awk '{print $9}' | tail -n 1""`
+echo $NAME
+done
