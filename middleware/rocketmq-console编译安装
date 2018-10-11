@@ -1,0 +1,30 @@
+
+rocketmq-console编译安装
+
+
+git clone https://github.com/apache/rocketmq-externals.git
+
+vim rocketmq-console/src/main/resources/application.properties
+修改者两个地方
+rocketmq.config.namesrvAddr=192.168.56.11:9876;192.168.56.12:9876
+Irocketmq.config.dataPath=/home/hadmin/data/rocketmq
+
+
+更改内容后
+
+cd rocketmq-console/
+
+mvn clean package -Dmaven.test.skip=true
+
+完成后
+cd target/
+
+找到rocketmq-console-ng-1.0.0.jar
+
+
+
+
+
+
+
+
