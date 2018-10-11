@@ -1,1 +1,63 @@
-#####
+nginx web服务更新
+
+#/bin/bash
+#服务器IP地址
+serverhost="10.167.10.81 10.167.10.82"
+#时间变量
+data=$(date "+%Y%m%d-%H%M%S")
+#SVN源代码包路径
+Sourcepackage_path=/var/lib/jenkins/workspace/update-djr-wx
+#部署代码路径
+deploy_path=/apps/nginx/html/wz
+#程序包名
+packagename=wz
+#清除.svn隐藏文件
+find $Sourcepackage_path/ -type d -name ".svn"  | xargs rm -rf
+
+for i in $serverhost
+do
+echo $packagename 正在更新程序包 ..............................
+scp -P 11235 -r $Sourcepackage_path/* root@$i:$deploy_path/
+echo $packagename 更新程序包完成 ..............................
+done
+
+
+
+tomcat 服务更新
+
+#服务器IP地址
+serverhost="10.167.10.81 10.167.10.82"
+#时间变量
+data=$(date "+%Y%m%d")
+#部署代码路径
+deploy_path=/apps/deploy
+#启动，停止程序路径
+ss_path=/apps/tomcat-app-api
+#程序包名
+packagename=app-api
+#编辑appid脚本路径
+editappid_path=/apps/tomcat-app-api/bin
+
+for i in $serverhost
+do
+echo ==正在停止tomcat服务。。。。。。。。。。。。。。。。。。。。。。。。
+ssh -p 11235 root@$i "cd $ss_path/ ; sh tomcat.sh stop"
+echo $packagename 移除旧程序包 ..............................
+ssh -t -t -p 11235 root@$i "cd $deploy_path/ ; rm -rf $packagename"
+echo $packagename 正在更新程序包 ..............................
+ssh -t -t -p 11235 root@$i "cd $deploy_path/ ; unzip -q $packagename.war -d $packagename"
+echo 正在移除war包
+ssh -t -t -p 11235 root@$i "rm -rf $deploy_path/*.war"
+echo $packagename 更新程序包 完成...............................
+echo 修改appid值................................................
+ssh -t -t -p 11235 root@$i "cd $editappid_path ; sh editappid.sh"
+echo 修改appid值完成............................................
+echo 新程序包修改时间 !!!（整个war替换的参考信息）!!!
+newpackage=`ssh -t -t -p 11235 root@$i  "ls -l $deploy_path/ | grep $packagename"`
+echo $newpackage
+echo ==正在启动tomcat服务。。。。。。。。。。。。。。。。。。。。。。。。。。。
+ssh -p 11235 root@$i "cd $ss_path/ ; sh tomcat.sh start"
+echo ==启动tomcat服务完成。。。。。。。。。。。。。。。。。。。。。。。。。。。
+sleep 30
+done
+

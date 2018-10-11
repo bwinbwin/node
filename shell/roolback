@@ -1,0 +1,32 @@
+回滚脚本
+
+#/bin/bash
+#服务名：wz
+#服务器IP地址
+serverhost="10.167.10.81 10.167.10.82"
+#时间变量
+data=$(date "+%Y-%m-%d")
+#程序部署路径
+s_path=/usr/local/nginx/html
+#备份路径
+b_path=/data/backup/nginx
+#启动，停止程序路径
+# service nginx restart
+#程序包名
+packagename=wz
+
+for i in $serverhost
+do
+echo ==正在停止Nginx服务。。。。。。。。。。。。。。。。。。。。。。。。
+#ssh -p 11235 root@$i "service nginx stop"
+echo ==正在回退程序文件 :$packagename。。。。。。。。。。。。。。。。。。
+#获取备份回退的程序包名变量
+NAME=`ssh -p 11235  root@$i  ""/bin/ls -l  -rt $b_path |grep $packagename | awk '{print $9}' | tail -n 1""`
+echo ==正在回退的程序包名：${NAME}。。。。。。。。。。。。。。。。。。。。
+ssh -p 11235 root@$i "cd $s_path ; rm -rf $packagename"
+ssh -p 11235 root@$i "tar -zxf $b_path/${NAME} -C $s_path/"
+echo ==正在启动Nginx。。。。。。。。。。。。。。。。。。。。。。。。。。。
+#ssh -p 11235 root@$i "service nginx start"
+sleep 5
+done
+
