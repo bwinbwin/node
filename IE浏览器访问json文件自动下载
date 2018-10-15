@@ -1,0 +1,17 @@
+使用nginx，IE浏览器访问json文件自动下载
+
+解决办法
+
+修改nginx/conf/mime.types
+
+添加一行
+text/plain json;
+	
+
+注释掉原来的
+application/json json
+
+
+最后
+nginx -t
+service nginx reload
