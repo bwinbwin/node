@@ -12,9 +12,9 @@ syncLimit=2
 dataDir=/usr/local/zookeeper-3.4.8/data
 dataLogDir=/usr/local/zookeeper-3.4.8/logs
 clientPort=2182
-server.1=10.180.110.173:6000:6001
-server.2=10.180.110.174:6000:6001
-server.3=10.180.110.175:6000:6001
+server.1=10.180.110.1xx:6000:6001
+server.2=10.180.110.1xx:6000:6001
+server.3=10.180.110.1xx:6000:6001
 
 
 在data目录下创建myid文件
@@ -32,7 +32,7 @@ syncLimit=2
 dataDir=/usr/local/zookeeper-3.4.8/data
 dataLogDir=/usr/local/zookeeper-3.4.8/logs
 clientPort=2182
-server.1=10.180.110.173:6000:6001
+server.1=10.180.110.1xx:6000:6001
 
 启动程序
 ./zkServer.sh start
